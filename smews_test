@@ -3,6 +3,8 @@
 import sys, os
 from modules import *
 
+nbtest = 0
+
 def what(action, test_suite, build_options):
     return "{};{};{}".format(action, test_suite, smews.build_options_to_string(build_options))
 
@@ -86,6 +88,7 @@ def ip_from_target(ip,target):
     return ip.format(available_targets.index(target)+10)
 
 def do_test_build(test_suite, build_options):
+    global nbtest
     global build_only
     # Global filter (for all suites)
     if not test_suites.filter(".", build_options):
@@ -99,12 +102,24 @@ def do_test_build(test_suite, build_options):
         if not build_only and test_program(test_suite, build_options):
             # Run smews
             if test_run(test_suite, build_options):
+                avantFile = "bitflip/before/"+test_suite+'_'+'_'.join(build_options)+'#'+`nbtest`+'.pcap'
+                apresFile = "bitflip/after/"+test_suite+'_'+'_'.join(build_options)+'#'+`nbtest`+'.pcap'
+                nbtest += 1
+                tcpdump = Popen(['tcpdump','-i','any','-w',avantFile,'dst',build_options['ipaddr']])
                 # Executes tests
                 do_tests(test_suite, build_options)
+                tcpdump.terminate()
+                tcpdump = Popen(['tcpdump','-i','any','-w',apresFile,'host',build_options['ipaddr']])
+
+                call(['python','smewsuite.py','file='+avantFile,'-v'])
+                tcpdump.terminate()
+
+                if not call(['pgrep','smews.elf']) == 0:
+                    logfile = open("bitflip/fail.txt", mode="a+")
+                    logfile.write('#'+`nbtest`+'\n')
+                    logfile.close()
                 # Kill
                 test_kill(test_suite, build_options)
-
-
 
 
 if len(sys.argv) < 2:
