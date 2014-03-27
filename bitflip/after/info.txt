@@ -1,0 +1,1 @@
+this is the record of replay of smews_test with bitflip.
